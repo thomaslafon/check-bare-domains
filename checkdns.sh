@@ -61,11 +61,25 @@ domain_list() {
   return 0;
 }
 
+isbaredomain() {
+  #regexp="^(([^.]*)(\.com(\..+)?|\.co(\.[^.]*$)+|\.[^\.]*))$"
+  regexp="^(([^.]*)(\.com(\..+)?|\.co(\.[^.]*$)+|\.in(\.[^.]*$)+|\.[^\.]*))$"
+  
+  if [[ $1 =~ $regexp ]]; then 
+    echo "1"
+    return
+  else
+    echo "0"
+    return
+  fi
+}
+
 # MAIN
-echo "Scan bare domain $(date '+%d/%m/%Y %H:%M:%S')";
+echo "Check CF configuration $(date '+%d/%m/%Y %H:%M:%S')";
 domain_list || { echo "something went wrong while getting site list.";exit 1; }
 
-MAIL_BODY="Hello, find here the list of all bare domains NOT on a CDN load balancer IP:\n";
+MAIL_BODY="Hi everyone,\n\nPlease find here the list of all websites NOT SET on a Cloudflare CDN:\n\n";
+
 MAIL_BODY_DOMAINS_OK="";
 MAIL_BODY_DOMAINS_NOK="";
 
@@ -74,50 +88,72 @@ do
   # gather details
   if [ "${DOMAIN:0:3}" != 'www' ] && [ "${DOMAIN:0:7}" != 'preprod' ] && [ "${DOMAIN: -17}" != 'acsitefactory.com' ]; then
     echo "===== checking $DOMAIN ====="
-    BAREIP=`dig a $DOMAIN +short`
-    CDN=`dig $DOMAIN.cdn.cloudflare.net +short`
 
     # We first assume config is set correctly
     # If any DNS entry ip is not against a CDN load balancer
     # we invalidate the conf
     CONFIGOK=1
-    # Check multi DNS entries.
-    for cdndomain in $CDN
-    do
-      ISLINEIN=0
-      for bare in $BAREIP
-        do
-          if [ "$cdndomain" = "$bare" ]; then
-            ISLINEIN=1
-          fi
-        done
-        if [[ $ISLINEIN -eq 0 ]]; then
-          CONFIGOK=0
-        fi
-    done
+    ISBAREDOMAIN=`isbaredomain "$DOMAIN"`
 
-    echo "config : $CONFIGOK"
-    if [[ $CONFIGOK -eq 0 ]]; then
-      MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK$DOMAIN"\r";
-      MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"IPs should be "$CDN"\r";
-
-      echo "bare domain for $DOMAIN is not a CDN load balancer IP!";
+    # Remove /xxxxx part from the domain name
+    regexp="^([^/]*)\/?.*$"
+    if [[ $DOMAIN =~ $regexp ]]; then 
+      REALDOMAIN=${BASH_REMATCH[1]};
     else
-      MAIL_BODY_DOMAINS_OK=$MAIL_BODY_DOMAINS_OK$DOMAIN"\r";
-      echo "bare domain for $DOMAIN is on a CDN load balancer IP!";
+      REALDOMAIN=$DOMAIN
     fi
 
-    echo "";
+    if [[ $ISBAREDOMAIN -ge 1 ]]; then
+      # If it's a bare domain we get A records
+      BAREIP=`dig a $REALDOMAIN +short`
+      CDN=`dig $REALDOMAIN.cdn.cloudflare.net +short`
 
+      # Check multi DNS entries.
+      for cdndomain in $CDN
+      do
+        ISLINEIN=0
+        for bare in $BAREIP
+          do
+            if [ "$cdndomain" = "$bare" ]; then
+              ISLINEIN=1
+            fi
+          done
+          if [[ $ISLINEIN -eq 0 ]]; then
+            CONFIGOK=0
+          fi
+      done
+
+      if [[ $CONFIGOK -eq 0 ]]; then
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"===== $DOMAIN =====\rPlease set A records on $REALDOMAIN :\r$CDN\r";
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"and ensure a DNS entry exists on Cloudflare \"$REALDOMAIN => loadbalancer IP\"\r\r";
+        echo "bare domain for $DOMAIN is not a CDN load balancer IP!";
+      else
+        MAIL_BODY_DOMAINS_OK=$MAIL_BODY_DOMAINS_OK"===== $DOMAIN =====\r$REALDOMAIN A records OK\r$CDN\r\r";
+        echo "bare domain for $DOMAIN is on a CDN load balancer IP!";
+      fi
+
+      #echo "";
+    else
+      # If it's a subdomain, then we check CNAME
+      CURRENTCNAME=`dig cname $REALDOMAIN +short`
+      if [[ "$REALDOMAIN.cdn.cloudflare.net." == "$CURRENTCNAME" ]]; then
+        MAIL_BODY_DOMAINS_OK=$MAIL_BODY_DOMAINS_OK"===== $DOMAIN =====\r$REALDOMAIN CNAME OK\r$CURRENTCNAME\r\r";
+        echo "CNAME OK : $CURRENTCNAME"
+      else
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"===== $DOMAIN =====\r";
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"$REALDOMAIN must be set to $REALDOMAIN.cdn.cloudflare.net.\r\r"
+        echo "CNAME NOT OK : $CURRENTCNAME should be $REALDOMAIN.cdn.cloudflare.net."
+      fi
+    fi
   fi
 
 done
 
 # send the email report.
 if [[ ${MAIL_TO} != "noalert" ]]; then
-  MAIL_SUBJECT="[$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT] - Bare Domains not on a CDN !!";
+  MAIL_SUBJECT="[$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT] - Origin Lockdown / Cloudflare configuration";
   MAIL_BODY=$MAIL_BODY$MAIL_BODY_DOMAINS_NOK"\r\r";
-  MAIL_BODY=$MAIL_BODY"All these domains have correct setup:\r\r"$MAIL_BODY_DOMAINS_OK"\r";
+  MAIL_BODY=$MAIL_BODY"All these sites have correct setup:\r\r"$MAIL_BODY_DOMAINS_OK"\r";
   echo -e "$MAIL_BODY" | mail -s "$MAIL_SUBJECT" "$MAIL_TO"
 else
   # At this point, we probably are in testing mode, so output the result
