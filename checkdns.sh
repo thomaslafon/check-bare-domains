@@ -10,6 +10,10 @@
 # CRONTAB should contain
 # /mnt/gfs/${AH_SITE_NAME}/scripts/checkDNS.sh "simon.elliott@acquia.com, thomas.lafon@acquia.com" &>> /var/log/sites/${AH_SITE_NAME}/logs/$(hostname -s)/cron-checkDNS.log
 #
+# Additional emails
+# As the Scheduled Job textarea on Acquia Cloud Interface has a limited number of characters, you can add more recipient emails by by renaming recipients.example.txt to recipients.txt.
+# This will add more recipients to the ones that are already in the Scheduled Job.
+#
 # Requirements : don't forget to include jq file as well in same directory
 # https://stedolan.github.io/jq/
 #
@@ -22,10 +26,12 @@
 # * Report a list of all not yet configured domains with CDNs IPs that should be set.
 # * Report a list of all well configured domains as verification purposes.
 #
-# Todo :
-# * Add "Ignore patterns" as second argument,
-# * Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory.nestleprofessional.com"
-#
+# v0.3 : Updated on 2019/12/19 :
+# * Added "ignored_patterns" as second argument, separated by commas, no space
+#   Useful for specific domains to be ignored, like factory domains
+# 
+# * Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory1.example.com,factory2.example.com"
+# 
 #
 # edit me! / Share me!
 #
@@ -34,9 +40,17 @@
 readonly SCRIPTS_BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
 readonly SITES_JSON_FILE="/mnt/gfs/$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT/files-private/sites.json";
 readonly JQ="$SCRIPTS_BASE/jq";
-# Pass email adresses as argument, default to noalert mecanism
-readonly MAIL_TO=${1:-noalert};
-readonly IGNORED_PATTERNS=${A:-nopattern};
+# Pass email adresses as argument, default to "noalert" mecanism
+MAIL_TO=${1:-noalert};
+if [[ -f "./recipients.txt" && $MAIL_TO != "noalert" ]]; then
+  RECIPIENTS=`cat recipients.txt`
+  MAIL_TO=$MAIL_TO",$RECIPIENTS"
+fi
+# Pass ignored_patterns as argument, default to "nopattern" mecanism
+readonly IGNORED_PATTERNS=${2:-nopattern};
+if [[ $IGNORED_PATTERNS != "nopattern" ]]; then
+  IFS=',' read -ra arrIGNORED <<< "$IGNORED_PATTERNS"
+fi
 
 # ACSF sites parsed from json.
 declare -A SITES=();
@@ -78,7 +92,10 @@ isbaredomain() {
 echo "Check CF configuration $(date '+%d/%m/%Y %H:%M:%S')";
 domain_list || { echo "something went wrong while getting site list.";exit 1; }
 
-MAIL_BODY="Hi everyone,\n\nPlease find here the list of all websites NOT SET on a Cloudflare CDN:\n\n";
+MAIL_BODY="Hi everyone,\n\nPlease find here the list of all websites\n\n"
+MAIL_BODY=$MAIL_BODY"############################\n"
+MAIL_BODY=$MAIL_BODY"# NOT SET on a Cloudflare CDN #\n"
+MAIL_BODY=$MAIL_BODY"############################\n\n"
 
 MAIL_BODY_DOMAINS_OK="";
 MAIL_BODY_DOMAINS_NOK="";
@@ -87,6 +104,19 @@ MAIL_BODY_DOMAINS_NOK="";
 do
   # gather details
   if [ "${DOMAIN:0:3}" != 'www' ] && [ "${DOMAIN:0:7}" != 'preprod' ] && [ "${DOMAIN: -17}" != 'acsitefactory.com' ]; then
+    # check if domain does not contain ignored patterns
+    ISAPATTERN=0
+    for ignored_pattern in "${arrIGNORED[@]}"; do
+      length=${#ignored_pattern}
+      if [[ "${DOMAIN: -$length}" == $ignored_pattern ]]; then
+        ISAPATTERN=1
+      fi
+    done
+
+    if [[ $ISAPATTERN -eq 1 ]]; then
+      continue
+    fi
+
     echo "===== checking $DOMAIN ====="
 
     # We first assume config is set correctly
@@ -132,7 +162,6 @@ do
         echo "bare domain for $DOMAIN is on a CDN load balancer IP!";
       fi
 
-      #echo "";
     else
       # If it's a subdomain, then we check CNAME
       CURRENTCNAME=`dig cname $REALDOMAIN +short`
@@ -153,10 +182,14 @@ done
 if [[ ${MAIL_TO} != "noalert" ]]; then
   MAIL_SUBJECT="[$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT] - Origin Lockdown / Cloudflare configuration";
   MAIL_BODY=$MAIL_BODY$MAIL_BODY_DOMAINS_NOK"\r\r";
-  MAIL_BODY=$MAIL_BODY"All these sites have correct setup:\r\r"$MAIL_BODY_DOMAINS_OK"\r";
+  MAIL_BODY=$MAIL_BODY"######################################\r"
+  MAIL_BODY=$MAIL_BODY"# All these sites have correct setup #\r"
+  MAIL_BODY=$MAIL_BODY"######################################\r\r"$MAIL_BODY_DOMAINS_OK"\r";
   echo -e "$MAIL_BODY" | mail -s "$MAIL_SUBJECT" "$MAIL_TO"
 else
   # At this point, we probably are in testing mode, so output the result
   echo -e "$MAIL_BODY"
 fi
 )
+
+

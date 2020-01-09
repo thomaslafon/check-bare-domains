@@ -15,6 +15,9 @@ $ ./checkDNS.sh "thomas.lafon@acquia.com"
 ```sh
 /mnt/gfs/${AH_SITE_NAME}/scripts/checkDNS.sh "simon.elliott@acquia.com, thomas.lafon@acquia.com" &>> /var/log/sites/${AH_SITE_NAME}/logs/$(hostname -s)/cron-checkDNS.log
 ```
+### Additional emails
+As the Scheduled Job textarea on Acquia Cloud Interface has a limited number of characters, you can add more recipient emails by by renaming recipients.example.txt to recipients.txt. This will add more recipients to the ones that are already in the Scheduled Job.
+
 ### Requirements
 
 don't forget to include jq file as well in same directory
