@@ -34,9 +34,16 @@ https://stedolan.github.io/jq/
 
 ### v0.3 : 03/07/2017 - Added documentation and README.md
 
+### v0.4 : 12/12/2019 - Added an Ignore Pattern as second argument
+* Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory.nestleprofessional.com"
+* to ignore all domains finishing with factory.nestleprofessional.com
+
+### v0.5 : 01/09/2019 - Added recipient.txt file to add more email addresses
+* As the scheduled job in Acquia Cloud  has a limited number of character
+* You can add more email addresses in recipients.txt on the server
+
 ## Todos
 * Add "Ignore patterns" as second argument,
 * Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory.nestleprofessional.com"
-
 
 edit me! / Share me!

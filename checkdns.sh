@@ -42,8 +42,8 @@ readonly SITES_JSON_FILE="/mnt/gfs/$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT/files-pri
 readonly JQ="$SCRIPTS_BASE/jq";
 # Pass email adresses as argument, default to "noalert" mecanism
 MAIL_TO=${1:-noalert};
-if [[ -f "./recipients.txt" && $MAIL_TO != "noalert" ]]; then
-  RECIPIENTS=`cat recipients.txt`
+if [[ -f $SCRIPTS_BASE"/recipients.txt" && $MAIL_TO != "noalert" ]]; then
+  RECIPIENTS=`cat $SCRIPTS_BASE/recipients.txt`
   MAIL_TO=$MAIL_TO",$RECIPIENTS"
 fi
 # Pass ignored_patterns as argument, default to "nopattern" mecanism
@@ -154,8 +154,8 @@ do
       done
 
       if [[ $CONFIGOK -eq 0 ]]; then
-        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"===== $DOMAIN =====\rPlease set A records on $REALDOMAIN :\r$CDN\r";
-        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"and ensure a DNS entry exists on Cloudflare \"$REALDOMAIN => loadbalancer IP\"\r\r";
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"===== $DOMAIN =====\rFirst ensure a DNS entry exists on Cloudflare \"$REALDOMAIN => {loadbalancerIP}\"\r";
+        MAIL_BODY_DOMAINS_NOK=$MAIL_BODY_DOMAINS_NOK"If Yes, then please set A records on $REALDOMAIN :\r$CDN\r\r";
         echo "bare domain for $DOMAIN is not a CDN load balancer IP!";
       else
         MAIL_BODY_DOMAINS_OK=$MAIL_BODY_DOMAINS_OK"===== $DOMAIN =====\r$REALDOMAIN A records OK\r$CDN\r\r";
