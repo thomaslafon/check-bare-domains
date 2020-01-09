@@ -40,10 +40,8 @@ https://stedolan.github.io/jq/
 
 ### v0.5 : 01/09/2019 - Added recipient.txt file to add more email addresses
 * As the scheduled job in Acquia Cloud  has a limited number of character
-* You can add more email addresses in recipients.txt on the server
+* You can add more email addresses in recipients.txt file where the script is installed on the server
 
 ## Todos
-* Add "Ignore patterns" as second argument,
-* Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory.nestleprofessional.com"
 
 edit me! / Share me!
