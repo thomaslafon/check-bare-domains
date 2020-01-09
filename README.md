@@ -4,7 +4,7 @@ This script checks, for an ACSF instance, if all bare domains DNS go through CDN
 The script retrieves all domains of a subscription reading "sites.json" on the server,
 then check DNS entries for each one and compare them to CDNs IPs from Cloudflare.
 
-Test the script by executing it locally on the server and it will send an email :
+You can test the script by executing it locally on the server:
 ```sh
 $ ./checkDNS.sh "thomas.lafon@acquia.com"
 ```
@@ -13,7 +13,7 @@ $ ./checkDNS.sh "thomas.lafon@acquia.com"
 
 ### Crontab should contain at least
 ```sh
-/mnt/gfs/${AH_SITE_NAME}/scripts/checkDNS.sh "thomas.lafon@acquia.com" &>> /var/log/sites/${AH_SITE_NAME}/logs/$(hostname -s)/cron-checkDNS.log
+/mnt/gfs/${AH_SITE_NAME}/scripts/check-bare-domains/checkDNS.sh "thomas.lafon@acquia.com" &>> /var/log/sites/${AH_SITE_NAME}/logs/$(hostname -s)/cron-checkDNS.log
 ```
 ### Additional emails
 As the Scheduled Job textarea on Acquia Cloud Interface has a limited number of characters, you can add more recipient emails by by renaming recipients.example.txt to recipients.txt. This will add more recipients to the ones that are already in the Scheduled Job.
