@@ -40,7 +40,7 @@
 # * As the scheduled job in Acquia Cloud  has a limited number of character
 # * You can add more email addresses in recipients.txt file where the script is installed on the server
 #
-## v0.6 : 01/14/2019 - Added domainstoexclude.txt file to ignore reporting on some domains
+## v0.6 : 01/13/2019 - Added domainstoexclude.txt file to ignore reporting on some domains
 # * Rename domainstoexclude.example.txt to domainstoexclude.txt
 # * Put 1 domain per line in domainstoexclude.txt
 #
@@ -57,6 +57,8 @@ MAIL_TO=${1:-noalert};
 # Prepare files
 if [[ -f $SCRIPTS_BASE"/domainstoexclude.txt"  ]]; then
   IGNORED_ZONES=`cat $SCRIPTS_BASE/domainstoexclude.txt`
+else
+  IGNORED_ZONES=""
 fi
 if [[ -f $SCRIPTS_BASE"/recipients.txt" && $MAIL_TO != "noalert" ]]; then
   RECIPIENTS=`cat $SCRIPTS_BASE/recipients.txt`
