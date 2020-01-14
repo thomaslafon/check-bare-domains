@@ -18,20 +18,32 @@
 # https://stedolan.github.io/jq/
 #
 # RELEASES
-# v0.1 : Init
+## v0.1 : Init
 # * Check bare domains against a single IP for all domains of a subscription, send report email.
 #
-# v0.2 : Updated on 2017/11/08 :
+## v0.2 : Updated on 2017/11/08 :
 # * Checks correctly multi A records DNS configurations.
 # * Report a list of all not yet configured domains with CDNs IPs that should be set.
 # * Report a list of all well configured domains as verification purposes.
 #
-# v0.3 : Updated on 2019/12/19 :
+## v0.3 : Updated on 2019/12/19 :
 # * Added "ignored_patterns" as second argument, separated by commas, no space
 #   Useful for specific domains to be ignored, like factory domains
 # 
 # * Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory1.example.com,factory2.example.com"
 # 
+## v0.4 : 12/12/2019 - Added an Ignore Pattern as second argument
+# * Example : $ ./checkDNS.sh "thomas.lafon@acquia.com" "factory.nestleprofessional.com"
+# * to ignore all domains finishing with factory.nestleprofessional.com
+#
+## v0.5 : 01/09/2019 - Added recipient.txt file to add more email addresses
+# * As the scheduled job in Acquia Cloud  has a limited number of character
+# * You can add more email addresses in recipients.txt file where the script is installed on the server
+#
+## v0.6 : 01/14/2019 - Added domainstoexclude.txt file to ignore reporting on some domains
+# * Rename domainstoexclude.example.txt to domainstoexclude.txt
+# * Put 1 domain per line in domainstoexclude.txt
+#
 #
 # edit me! / Share me!
 #
@@ -42,6 +54,10 @@ readonly SITES_JSON_FILE="/mnt/gfs/$AH_SITE_GROUP.$AH_SITE_ENVIRONMENT/files-pri
 readonly JQ="$SCRIPTS_BASE/jq";
 # Pass email adresses as argument, default to "noalert" mecanism
 MAIL_TO=${1:-noalert};
+# Prepare files
+if [[ -f $SCRIPTS_BASE"/domainstoexclude.txt"  ]]; then
+  IGNORED_ZONES=`cat $SCRIPTS_BASE/domainstoexclude.txt`
+fi
 if [[ -f $SCRIPTS_BASE"/recipients.txt" && $MAIL_TO != "noalert" ]]; then
   RECIPIENTS=`cat $SCRIPTS_BASE/recipients.txt`
   MAIL_TO=$MAIL_TO",$RECIPIENTS"
@@ -114,6 +130,10 @@ do
     done
 
     if [[ $ISAPATTERN -eq 1 ]]; then
+      continue
+    fi
+    # check if domain is is the IGNORED_DOMAINS
+    if [[ $IGNORED_ZONES == *"$DOMAIN"* ]]; then
       continue
     fi
 

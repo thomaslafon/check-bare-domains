@@ -41,6 +41,11 @@ https://stedolan.github.io/jq/
 * As the scheduled job in Acquia Cloud  has a limited number of character
 * You can add more email addresses in recipients.txt file where the script is installed on the server
 
+### v0.6 : 01/14/2019 - Added domainstoexclude.txt file to ignore reporting on some domains
+* Rename domainstoexclude.example.txt to domainstoexclude.txt
+* Put 1 domain per line in domainstoexclude.txt
+
+
 ## Todos
 
 edit me! / Share me!
